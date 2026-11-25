@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<!-- 인생시계: 뿅글이(@bbyonggeul) 제작 -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>인생시계</title>
+<meta name="description" content="태어난 날을 넣으면 내 인생이 지금 몇 시인지, 남은 주말과 여름은 몇 번인지 세어 주는 인생시계. 뿅글이 제작.">
+<meta name="author" content="뿅글이 (@bbyonggeul)">
+<meta property="og:type" content="website">
+<meta property="og:title" content="인생시계 -뿅글이 제작-">
+<meta property="og:description" content="태어난 날을 넣으면 내 인생이 지금 몇 시인지, 남은 주말과 여름은 몇 번인지 세어 드려요.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Abril+Fatface&amp;family=Gowun+Batang:wght@400;700&amp;display=swap">
+<style>
+:root {
+  /* 벽에 걸린 일력 한 장이 주인공. 일력 안은 가운데 정렬, 그 밖은 왼쪽 정렬한 달력 칸. */
+  --paper: #ffffff;
+  --ink: #17191c;
+  --muted: #59616b;
+  --rule: #cdd2d9;
+  --field: #eef1f6;
+  --sat: #1f4fd0; /* 달력의 토요일 */
+  --sun: #d92b2b; /* 달력의 일요일과 빨간 날 */
+  --font-num: "Abril Fatface", "Bodoni 72", Didot, "Bodoni MT", "Times New Roman", serif;
+  --font-text: "Gowun Batang", "Noto Serif KR", AppleMyungjo, "Nanum Myeongjo", Batang, serif;
+  --num-max: clamp(84px, 26vw, 120px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #15171b;
+    --ink: #f1f2f4;
+    --muted: #a4abb5;
+    --rule: #3b4149;
+    --field: #23272e;
+    --sat: #86acff;
+    --sun: #ff7468;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #15171b;
+  --ink: #f1f2f4;
+  --muted: #a4abb5;
+  --rule: #3b4149;
+  --field: #23272e;
+  --sat: #86acff;
+  --sun: #ff7468;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 17px;
+  line-height: 1.65;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, p, ul, dl, dd, fieldset { margin: 0; padding: 0; }
+fieldset { border: 0; min-width: 0; }
+ul { list-style: none; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--sat); outline-offset: 2px; }
+.sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ---------- 틀 ---------- */
+.page {
+  max-width: 592px;
+  margin: 0 auto;
+  padding: 28px 16px 72px;
+  display: grid;
+  gap: 44px;
+}
+.lead, .rest { display: grid; min-width: 0; }
+.lead { gap: 20px; }
+.rest { gap: 48px; }
+.title-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.masthead h1 { font-size: 30px; line-height: 1.25; font-weight: 700; }
+.masthead .by { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.masthead .lede { margin-top: 6px; max-width: 31em; color: var(--muted); font-size: 16px; }
+h2 { margin-bottom: 14px; font-size: 21px; line-height: 1.35; font-weight: 700; text-wrap: balance; }
+
+@media (min-width: 1000px) {
+  .page {
+    max-width: 1080px;
+    grid-template-columns: 440px minmax(0, 1fr);
+    column-gap: 72px;
+    align-items: start;
+    padding-top: 44px;
+  }
+}
+@media (min-width: 1000px) and (min-height: 820px) {
+  .lead { position: sticky; top: 32px; }
+}
+
+/* ---------- 일력 ---------- */
+.sheet {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  border-top: 0;
+}
+.bind { position: relative; height: 18px; background: var(--ink); }
+.bind::after {
+  content: "";
+  position: absolute; left: 50%; top: 50%;
+  width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--paper);
+}
+.sheet-head {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 11px 18px 9px;
+  border-bottom: 1px dashed var(--rule);
+  font-size: 15px; font-weight: 700;
+}
+.sheet[data-dow="6"] .dow, .sheet[data-dow="6"] .numeral { color: var(--sat); }
+.sheet[data-dow="0"] .dow, .sheet[data-dow="0"] .numeral { color: var(--sun); }
+
+.premise { padding: 8px 14px 0; font-size: 18px; line-height: 1.3; }
+.line {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline;
+  gap: 6px;
+  margin-top: 10px;
+}
+.blank { display: inline-flex; align-items: baseline; white-space: nowrap; }
+.blank input {
+  width: var(--w, 3em); height: 40px;
+  margin-right: 4px; padding: 0 2px;
+  border: 0; border-bottom: 2px solid var(--ink); border-radius: 3px 3px 0 0;
+  background: var(--field);
+  text-align: center; font-size: 19px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.blank input[aria-invalid="true"] { border-bottom-color: var(--sun); }
+
+.presets {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 13.5px;
+}
+.presets-label { margin-right: 2px; color: var(--muted); }
+.presets button {
+  min-height: 34px; padding: 4px 10px;
+  border: 1px solid var(--rule); border-radius: 999px;
+  background: transparent; color: var(--muted);
+}
+.presets button:hover { border-color: var(--ink); color: var(--ink); }
+.presets button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); font-weight: 700; }
+
+.msg { min-height: 1.5em; margin-top: 10px; text-align: center; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.msg.is-error { color: var(--sun); font-weight: 700; }
+.eg {
+  display: inline-block; margin-right: 6px; padding: 0 6px;
+  border: 1px solid var(--sun); border-radius: 2px;
+  color: var(--sun); font-size: 12.5px; font-weight: 700;
+}
+
+.sheet-body { position: relative; }
+.leafable { padding: 12px 18px 18px; background: var(--paper); text-align: center; }
+.sheet-label { font-size: 16px; color: var(--muted); }
+.numeral-wrap {
+  display: flex; align-items: center; justify-content: center;
+  height: var(--num-max);
+  margin-top: 2px;
+}
+.numeral {
+  display: inline-block;
+  font-family: var(--font-num);
+  font-size: 90px; line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: lining-nums;
+}
+/* 초 단위는 숫자가 매초 바뀌므로 칸 너비를 고정해 흔들리지 않게 함 */
+.numeral.is-ticking .dg { display: inline-block; width: 0.67em; text-align: center; }
+.numeral.is-ticking .pt { display: inline-block; width: 0.28em; text-align: center; }
+.unit-word { margin-top: 8px; font-size: 24px; line-height: 1.2; font-weight: 700; }
+
+/* 단위를 바꾸면 앞장이 뜯겨 나가고 새 숫자가 드러남 */
+.leaf {
+  position: absolute; inset: 0; z-index: 2;
+  transform-origin: 10% 0;
+  animation: tear 0.52s cubic-bezier(0.5, 0, 0.85, 0.5) forwards;
+  pointer-events: none;
+}
+@keyframes tear {
+  0% { transform: none; opacity: 1; }
+  18% { transform: translateY(3px) rotate(-1deg); opacity: 1; }
+  55% { opacity: 1; }
+  100% { transform: translateY(70%) rotate(-9deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .leaf { display: none; }
+}
+
+.units {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-top: 1px solid var(--ink);
+}
+.units input { position: absolute; opacity: 0; pointer-events: none; }
+.units label {
+  display: block;
+  border-left: 1px solid var(--rule);
+  text-align: center; font-size: 16px; font-weight: 700; line-height: 44px;
+  cursor: pointer;
+}
+.units label:first-of-type { border-left: 0; }
+.units input:checked + label { background: var(--ink); border-left-color: var(--ink); color: var(--paper); }
+.units input:focus-visible + label { outline: 2px solid var(--sat); outline-offset: -4px; }
+
+.foot {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--ink);
+}
+.foot > div { padding: 10px 16px 12px; }
+.foot .exact { grid-column: 1 / -1; border-bottom: 1px solid var(--rule); }
+.foot .half + .half { border-left: 1px solid var(--rule); }
+.foot dt { font-size: 13.5px; color: var(--muted); }
+.foot dd { font-size: 16.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.clock { margin-left: 6px; color: var(--muted); }
+
+/* ---------- 인생시계 ---------- */
+.lifeclock { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; }
+.dial { flex: none; width: clamp(140px, 40vw, 176px); height: auto; overflow: visible; }
+.dial-rim { fill: var(--paper); stroke: var(--ink); stroke-width: 2.5; }
+.dial-ticks line { stroke: var(--muted); stroke-width: 1.5; }
+.dial-ticks .q { stroke: var(--ink); stroke-width: 3; }
+.dial-num { font-family: var(--font-num); font-size: 24px; fill: var(--ink); }
+.hand { stroke: var(--ink); transform-origin: 100px 100px; }
+.hand-hour { stroke-width: 6; }
+.hand-min { stroke-width: 3.5; }
+.dial-cap { fill: var(--sun); stroke: var(--paper); stroke-width: 2; }
+/* 생일이나 기준 나이를 바꾸면 바늘이 새 시각으로 돌아감 */
+.dial.is-live .hand { transition: transform 0.9s cubic-bezier(0.3, 1.2, 0.5, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .dial.is-live .hand { transition: none; }
+}
+.clock-read { flex: 1 1 160px; min-width: 0; }
+.clock-premise { font-size: 15.5px; line-height: 1.5; color: var(--muted); }
+.clock-time { margin-top: 8px; line-height: 1; white-space: nowrap; }
+.clock-time .ampm { display: block; margin-bottom: 8px; font-size: 18px; font-weight: 700; }
+.clock-time .tn { font-family: var(--font-num); font-size: clamp(40px, 12vw, 56px); }
+.clock-time .tx { margin: 0 8px 0 3px; font-size: 18px; font-weight: 700; }
+.facts { margin-top: 20px; border-top: 2px solid var(--ink); }
+.facts > div {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.facts dt { font-size: 14px; color: var(--muted); }
+.facts dd { font-size: 16.5px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (min-width: 540px) {
+  .facts {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .facts > div { display: block; padding: 10px 14px 12px; border-bottom: 0; background: var(--paper); }
+}
+
+/* ---------- 달력 칸 ---------- */
+.cells {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+}
+.cells li {
+  display: grid; align-content: start;
+  min-height: 124px;
+  padding: 10px 14px 14px;
+  background: var(--paper);
+}
+.cells h3 { font-size: 16px; line-height: 1.3; font-weight: 700; }
+.cells .count { margin-top: 16px; line-height: 1; white-space: nowrap; }
+.cells .n { font-family: var(--font-num); font-size: 40px; }
+.cells .x { margin-left: 4px; font-size: 16px; font-weight: 700; }
+.cells .cap { min-height: 1.4em; margin-top: 12px; font-size: 14px; line-height: 1.4; color: var(--muted); }
+.cells .is-sat .n { color: var(--sat); }
+.cells .is-sun .n { color: var(--sun); }
+@media (min-width: 540px) {
+  .cells { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---------- 주 단위 달력 ---------- */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-bottom: 14px; font-size: 14.5px; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 10px; height: 10px; flex: none; }
+.sw-past { background: var(--rule); }
+.sw-next { background: var(--ink); }
+.sw-now {
+  width: 6px; height: 6px; margin: 0 4px;
+  background: var(--sun);
+  box-shadow: 0 0 0 3px var(--paper), 0 0 0 4.5px var(--sun);
+  border-radius: 50%;
+}
+.weeks-box { min-height: 48px; padding: 8px 0 4px; }
+.weeks-box svg { display: block; overflow: visible; shape-rendering: crispEdges; }
+.wk-past { fill: var(--rule); }
+.wk-next { fill: var(--ink); }
+.wk-now { fill: var(--sun); }
+.wk-ring { fill: none; stroke: var(--sun); stroke-width: 1.5; shape-rendering: geometricPrecision; }
+.weeks-box text { font-family: var(--font-text); font-size: 11.5px; fill: var(--muted); }
+.fine { margin-top: 10px; font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="lead">
+    <header class="masthead">
+      <div class="title-row">
+        <h1>인생시계</h1>
+        <p class="by">-뿅글이 제작-</p>
+      </div>
+      <p class="lede">태어난 날을 넣으면 내 인생이 지금 몇 시인지, 남은 주말과 여름은 몇 번인지 세어 드려요.</p>
+    </header>
+
+    <section class="sheet" id="sheet" aria-label="남은 시간 일력">
+      <div class="bind" aria-hidden="true"></div>
+      <p class="sheet-head"><span id="today">&nbsp;</span><span class="dow" id="dow"></span></p>
+
+      <form class="premise" id="premise" novalidate>
+        <p class="line">
+          <span class="blank"><input id="by" name="by" type="text" inputmode="numeric" autocomplete="bday-year" maxlength="4" aria-label="태어난 해" style="--w:3em"><span>년</span></span>
+          <span class="blank"><input id="bm" name="bm" type="text" inputmode="numeric" autocomplete="bday-month" maxlength="2" aria-label="태어난 달" style="--w:1.9em"><span>월</span></span>
+          <span class="blank"><input id="bd" name="bd" type="text" inputmode="numeric" autocomplete="bday-day" maxlength="2" aria-label="태어난 날" style="--w:1.9em"><span>일에 태어나</span></span>
+        </p>
+        <p class="line">
+          <span class="blank"><input id="life" name="life" type="text" inputmode="decimal" autocomplete="off" maxlength="5" aria-label="세어 볼 기준 나이" style="--w:3em"><span>세까지 산다면</span></span>
+        </p>
+        <div class="presets" role="group" aria-label="평균 수명으로 바로 맞추기">
+          <span class="presets-label" aria-hidden="true">평균</span>
+          <button type="button" id="preset-all" data-life="83.7" aria-pressed="false">전체 83.7</button>
+          <button type="button" id="preset-f" data-life="86.6" aria-pressed="false">여성 86.6</button>
+          <button type="button" id="preset-m" data-life="80.8" aria-pressed="false">남성 80.8</button>
+        </div>
+        <p class="msg" id="msg" role="status"></p>
+      </form>
+
+      <div class="sheet-body" id="sheet-body">
+        <div class="leafable" id="leafable">
+          <p class="sheet-label">남은 시간은</p>
+          <div class="numeral-wrap" id="numeral-wrap"><span class="numeral" id="numeral">0</span></div>
+          <p class="unit-word" id="unit-word">일</p>
+        </div>
+      </div>
+      <p class="sr" id="sr-summary" aria-live="polite"></p>
+
+      <fieldset>
+        <legend class="sr">남은 시간을 볼 단위</legend>
+        <div class="units">
+          <input type="radio" name="unit" id="unit-y" value="y"><label for="unit-y">년</label>
+          <input type="radio" name="unit" id="unit-mo" value="mo"><label for="unit-mo">개월</label>
+          <input type="radio" name="unit" id="unit-w" value="w"><label for="unit-w">주</label>
+          <input type="radio" name="unit" id="unit-d" value="d"><label for="unit-d">일</label>
+          <input type="radio" name="unit" id="unit-s" value="s"><label for="unit-s">초</label>
+        </div>
+      </fieldset>
+
+      <dl class="foot">
+        <div class="exact"><dt>정확히는</dt><dd><span id="exact"></span><span class="clock" id="clock"></span></dd></div>
+        <div class="half"><dt>지나온 시간</dt><dd id="passed"></dd></div>
+        <div class="half"><dt id="end-label">기준 나이가 되는 날</dt><dd id="end-date"></dd></div>
+      </dl>
+    </section>
+  </div>
+
+  <div class="rest">
+    <section aria-labelledby="h-clock">
+      <h2 id="h-clock">내 인생은 지금 몇 시</h2>
+      <div class="lifeclock">
+        <svg class="dial" id="dial" viewBox="0 0 200 200" role="img" aria-label="인생시계">
+          <circle class="dial-rim" cx="100" cy="100" r="96"/>
+          <g class="dial-ticks" id="dial-ticks"></g>
+          <text class="dial-num" x="100" y="31" dy="0.35em" text-anchor="middle">12</text>
+          <text class="dial-num" x="169" y="100" dy="0.35em" text-anchor="middle">3</text>
+          <text class="dial-num" x="100" y="169" dy="0.35em" text-anchor="middle">6</text>
+          <text class="dial-num" x="31" y="100" dy="0.35em" text-anchor="middle">9</text>
+          <line class="hand hand-hour" id="hand-hour" x1="100" y1="112" x2="100" y2="54"/>
+          <line class="hand hand-min" id="hand-min" x1="100" y1="116" x2="100" y2="26"/>
+          <circle class="dial-cap" cx="100" cy="100" r="6"/>
+        </svg>
+        <div class="clock-read">
+          <p class="clock-premise" id="clock-premise">기준 나이까지를 하루로 치면 지금은</p>
+          <p class="clock-time"><span class="ampm" id="clock-ampm">오전</span><span class="tn" id="clock-h">0</span><span class="tx">시</span><span class="tn" id="clock-m">0</span><span class="tx">분</span></p>
+        </div>
+      </div>
+      <dl class="facts">
+        <div><dt>이 시계의 1시간은</dt><dd id="fact-hour"></dd></div>
+        <div><dt>오늘 하루는 이 시계로</dt><dd id="fact-day"></dd></div>
+        <div><dt id="fact-mark-label">정오까지 남은 시간</dt><dd id="fact-mark"></dd></div>
+      </dl>
+    </section>
+
+    <section aria-labelledby="h-times">
+      <h2 id="h-times">횟수로 바꿔 보면</h2>
+      <ul class="cells">
+        <li class="is-sat"><h3>주말</h3><p class="count"><span class="n" id="n-weekend">0</span><span class="x">번</span></p><p class="cap" id="c-weekend"></p></li>
+        <li><h3>보름달</h3><p class="count"><span class="n" id="n-moon">0</span><span class="x">번</span></p><p class="cap" id="c-moon"></p></li>
+        <li><h3>봄</h3><p class="count"><span class="n" id="n-spring">0</span><span class="x">번</span></p><p class="cap" id="c-spring"></p></li>
+        <li><h3>여름</h3><p class="count"><span class="n" id="n-summer">0</span><span class="x">번</span></p><p class="cap" id="c-summer"></p></li>
+        <li class="is-sun"><h3>크리스마스</h3><p class="count"><span class="n" id="n-xmas">0</span><span class="x">번</span></p><p class="cap" id="c-xmas"></p></li>
+        <li><h3>생일</h3><p class="count"><span class="n" id="n-birthday">0</span><span class="x">번</span></p><p class="cap" id="c-birthday"></p></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="h-weeks">
+      <h2 id="h-weeks">한 주를 한 칸으로 그리면</h2>
+      <p class="legend">
+        <span><i class="sw sw-past"></i><b id="lg-past">지나온 주</b></span>
+        <span><i class="sw sw-now"></i><b>이번 주</b></span>
+        <span><i class="sw sw-next"></i><b id="lg-next">남은 주</b></span>
+      </p>
+      <div class="weeks-box" id="weeks-box"></div>
+      <p class="fine">한 줄이 1년, 한 칸이 1주쯤이에요. 왼쪽 숫자는 나이예요.</p>
+    </section>
+  </div>
+</main>
+
+<script id="calc">
+/* 날짜 계산만 모아 둔 부분. 화면과 상관없는 순수 함수라 따로 검산할 수 있어요. */
+const Calc = (() => {
+  const DAY = 864e5, WEEK = 7 * DAY;
+  const LUNATION = 29.530588861 * DAY;           // 보름달에서 다음 보름달까지 평균 주기
+  const MOON_REF = Date.UTC(2000, 0, 21, 4, 40); // 기준으로 삼은 보름달 시각(UTC)
+
+  function addMonths(d, n) {
+    const m = d.getMonth() + n;
+    const lastDate = new Date(d.getFullYear(), m + 1, 0).getDate();
+    return new Date(d.getFullYear(), m, Math.min(d.getDate(), lastDate),
+      d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
+  }
+  const dayNum = (d) => Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY);
+  const utcDay = (y, m, d) => Date.UTC(y, m, d) / DAY;
+  const moonIndex = (t) => Math.floor((t - MOON_REF) / LUNATION);
+  const birthdayIn = (birth, y) =>
+    utcDay(y, birth.getMonth(), Math.min(birth.getDate(), new Date(y, birth.getMonth() + 1, 0).getDate()));
+
+  function fullYears(from, to) {
+    let y = to.getFullYear() - from.getFullYear();
+    if (addMonths(from, y * 12) > to) y--;
+    return Math.max(0, y);
+  }
+
+  /* from에서 to까지를 년, 개월, 주, 일, 시분초로 나눔 */
+  function breakdown(from, to) {
+    if (to <= from) return { y: 0, mo: 0, w: 0, d: 0, h: 0, mi: 0, s: 0, months: 0 };
+    let months = (to.getFullYear() - from.getFullYear()) * 12 + to.getMonth() - from.getMonth();
+    if (addMonths(from, months) > to) months--;
+    let rest = to - addMonths(from, months);
+    const days = Math.floor(rest / DAY); rest -= days * DAY;
+    const h = Math.floor(rest / 36e5); rest -= h * 36e5;
+    const mi = Math.floor(rest / 6e4); rest -= mi * 6e4;
+    return {
+      y: Math.floor(months / 12), mo: months % 12,
+      w: Math.floor(days / 7), d: days % 7,
+      h, mi, s: Math.floor(rest / 1e3), months,
+    };
+  }
+
+  /* 생일과 기준 나이로 남은 시간과 횟수를 셈. 기준 나이가 되는 날 0시가 끝 */
+  function measure(birth, life, now) {
+    const months = Math.round(life * 12);
+    const end = addMonths(birth, months);
+    const left = Math.max(0, end - now);
+    const today = dayNum(now), last = dayNum(end) - 1;
+    const y0 = now.getFullYear(), y1 = end.getFullYear();
+    const years = (test) => { let c = 0; for (let y = y0; y <= y1; y++) if (test(y)) c++; return c; };
+    const onDay = (n) => n >= today && n <= last;
+    const season = (m0, m1) => (y) => utcDay(y, m1 + 1, 0) >= today && utcDay(y, m0, 1) <= last;
+    const from = today - 1;                           // 일요일에 열어도 이번 주말을 세도록 어제부터 찾음
+    const firstSat = from + ((2 - from) % 7 + 7) % 7; // 1970년 1월 3일이 토요일
+    const age = fullYears(birth, now);
+    const lastB = addMonths(birth, age * 12), nextB = addMonths(birth, (age + 1) * 12);
+    const totalCells = Math.floor(months / 12) * 52 + Math.round(months % 12 / 12 * 52);
+    const livedCells = left
+      ? Math.min(totalCells - 1, age * 52 + Math.floor((now - lastB) / (nextB - lastB) * 52))
+      : totalCells;
+    return {
+      end, left, age,
+      passed: Math.min(1, Math.max(0, (now - birth) / (end - birth))),
+      weeksLived: Math.max(0, Math.floor((now - birth) / WEEK)),
+      rows: Math.ceil(months / 12), totalCells, livedCells,
+      counts: {
+        weekend: left && last >= firstSat ? Math.floor((last - firstSat) / 7) + 1 : 0,
+        moon: left ? moonIndex(end.getTime()) - moonIndex(now.getTime()) : 0,
+        spring: left ? years(season(2, 4)) : 0,
+        summer: left ? years(season(5, 7)) : 0,
+        xmas: left ? years((y) => onDay(utcDay(y, 11, 25))) : 0,
+        birthday: left ? years((y) => onDay(birthdayIn(birth, y))) : 0,
+      },
+    };
+  }
+
+  /* 칸마다 붙는 한 줄: 다음 차례가 언제인지 */
+  function nextNotes(birth, now) {
+    const today = dayNum(now), y = now.getFullYear(), dow = now.getDay(), month = now.getMonth();
+    const until = (dayOf) => { for (let k = y; k <= y + 1; k++) { const n = dayOf(k); if (n >= today) return n - today; } return 0; };
+    const moon = new Date(MOON_REF + (moonIndex(now.getTime()) + 1) * LUNATION);
+    const toXmas = until((k) => utcDay(k, 11, 25));
+    const toBirthday = until((k) => birthdayIn(birth, k));
+    return {
+      weekend: dow === 6 || dow === 0 ? '지금이 주말이에요' : `이번 주말까지 ${6 - dow}일`,
+      moon: `다음은 ${moon.getMonth() + 1}월 ${moon.getDate()}일 무렵`,
+      spring: month >= 2 && month <= 4 ? '지금이 봄이에요' : `다음 봄까지 ${until((k) => utcDay(k, 2, 1))}일`,
+      summer: month >= 5 && month <= 7 ? '지금이 여름이에요' : `다음 여름까지 ${until((k) => utcDay(k, 5, 1))}일`,
+      xmas: toXmas ? `다음 크리스마스까지 ${toXmas}일` : '오늘이 크리스마스예요',
+      birthday: toBirthday ? `다음 생일까지 ${toBirthday}일` : '오늘이 생일이에요',
+    };
+  }
+
+  /* 입력한 글자를 날짜로 바꿈. 아직 덜 쓴 상태면 pending */
+  function parseBirth(y, m, d, now) {
+    if (!/^\d{4}$/.test(y) || !/^\d{1,2}$/.test(m) || !/^\d{1,2}$/.test(d)) return { pending: true };
+    const Y = +y, M = +m, D = +d;
+    if (Y < 1900) return { error: '태어난 해는 1900년 이후로 넣어 주세요.', at: 'by' };
+    const date = new Date(Y, M - 1, D);
+    if (date.getFullYear() !== Y || date.getMonth() !== M - 1 || date.getDate() !== D) {
+      return { error: '달력에 없는 날짜예요. 월과 일을 확인해 주세요.', at: M < 1 || M > 12 ? 'bm' : 'bd' };
+    }
+    if (date > now) return { error: '아직 오지 않은 날짜예요. 태어난 날을 넣어 주세요.', at: 'by' };
+    return { date };
+  }
+
+  return { DAY, WEEK, addMonths, dayNum, breakdown, measure, nextNotes, parseBirth };
+})();
+</script>
+
+<script>
+(() => {
+  'use strict';
+  const { DAY, WEEK } = Calc;
+  const STORE_KEY = 'how-many-more.v1';
+  const DOW = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+  const UNITS = { y: '년', mo: '개월', w: '주', d: '일', s: '초' };
+  const TILES = ['weekend', 'moon', 'spring', 'summer', 'xmas', 'birthday'];
+  const EXAMPLE = { y: 1997, m: 1, d: 1, life: 83.7, unit: 'd', eg: true };
+
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => Math.max(0, n).toLocaleString('ko-KR');
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const ymd = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+  const lifeText = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  const el = { by: $('by'), bm: $('bm'), bd: $('bd'), life: $('life') };
+  const errors = { birth: '', life: '' };
+  let state = { ...EXAMPLE };
+  let result = null;                  // 지금 화면에 그려 둔 계산 결과
+  let shown = { text: '', unit: '' }; // 일력에 적혀 있는 숫자
+  let dayShown = -1;
+  let gridKey = '';
+  let lifeTimer = 0;
+
+  /* ---------- 저장 ---------- */
+  function usable(v) {
+    if (!v || typeof v !== 'object') return false;
+    const birth = Calc.parseBirth(String(v.y), String(v.m), String(v.d), new Date());
+    return !!birth.date && typeof v.life === 'number' && v.life >= 1 && v.life <= 130 && v.unit in UNITS;
+  }
+  function load() {
+    try { const v = JSON.parse(localStorage.getItem(STORE_KEY)); return usable(v) ? v : null; }
+    catch (e) { return null; }
+  }
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch (e) { /* 저장이 막힌 브라우저에서는 저장 없이 그대로 씀 */ }
+  }
+
+  /* ---------- 일력 숫자 ---------- */
+  function fitNumeral() {
+    const num = $('numeral'), wrap = $('numeral-wrap');
+    const room = wrap.clientWidth;
+    if (!room) return;
+    num.style.fontSize = '100px';
+    const width = num.getBoundingClientRect().width || 1;
+    num.style.fontSize = `${Math.max(28, Math.min(wrap.clientHeight, Math.floor(100 * room * 0.97 / width)))}px`;
+  }
+
+  function dropLeaf() {
+    const body = $('sheet-body');
+    body.querySelectorAll('.leaf').forEach((n) => n.remove());
+    const leaf = $('leafable').cloneNode(true);
+    leaf.removeAttribute('id');
+    leaf.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+    leaf.classList.add('leaf');
+    leaf.setAttribute('aria-hidden', 'true');
+    leaf.addEventListener('animationend', () => leaf.remove());
+    body.appendChild(leaf);
+  }
+
+  function setNumeral(text, unit, tear) {
+    if (text === shown.text && unit === shown.unit) return;
+    const num = $('numeral');
+    const ticking = unit === 's';
+    const sameRun = ticking && shown.unit === 's';
+    if (tear && shown.text && !sameRun && !reducedMotion.matches) dropLeaf();
+    if (sameRun && text.length === shown.text.length) {
+      for (let i = 0; i < text.length; i++) {
+        if (text[i] !== shown.text[i]) num.children[i].textContent = text[i];
+      }
+    } else {
+      num.classList.toggle('is-ticking', ticking);
+      if (ticking) {
+        num.innerHTML = [...text].map((ch) => `<span class="${/\d/.test(ch) ? 'dg' : 'pt'}">${ch}</span>`).join('');
+      } else {
+        num.textContent = text;
+      }
+      $('unit-word').textContent = UNITS[unit];
+      fitNumeral();
+    }
+    shown = { text, unit };
+  }
+
+  function paintClock(now, tear) {
+    const left = Math.max(0, result.end - now);
+    const p = Calc.breakdown(now, result.end);
+    $('exact').textContent = `${p.y}년 ${p.mo}개월 ${p.w}주 ${p.d}일`;
+    $('clock').textContent = `${pad2(p.h)}:${pad2(p.mi)}:${pad2(p.s)}`;
+    const u = state.unit;
+    const text = u === 'y' ? (Math.floor(left / (365.2425 * DAY) * 10) / 10).toFixed(1)
+      : u === 'mo' ? fmt(p.months)
+      : u === 'w' ? fmt(Math.floor(left / WEEK))
+      : u === 's' ? fmt(Math.floor(left / 1000))
+      : fmt(Math.floor(left / DAY));
+    setNumeral(text, u, tear);
+    return text;
+  }
+
+  /* ---------- 인생시계: 태어난 날이 0시, 기준 나이가 되는 날이 24시 ---------- */
+  function spanText(months) {
+    const y = Math.floor(months / 12), m = months % 12;
+    return y && m ? `${y}년 ${m}개월` : y ? `${y}년` : `${m}개월`;
+  }
+
+  function paintLifeClock(birth, now) {
+    const whole = result.end - birth;
+    const hours = result.passed * 24;
+    const minutes = Math.min(1440, Math.floor(hours * 60));
+    const h = Math.floor(minutes / 60), mi = minutes % 60;
+    const ampm = !result.left ? '밤' : h < 12 ? '오전' : '오후';
+    $('clock-premise').textContent = `${lifeText(state.life)}세까지를 하루로 치면 지금은`;
+    $('clock-ampm').textContent = ampm;
+    $('clock-h').textContent = String(h % 12 || 12);
+    $('clock-m').textContent = String(mi);
+    $('hand-hour').style.transform = `rotate(${(hours * 30).toFixed(2)}deg)`;
+    $('hand-min').style.transform = `rotate(${(hours * 360).toFixed(2)}deg)`;
+    $('dial').setAttribute('aria-label', `인생시계. ${ampm} ${h % 12 || 12}시 ${mi}분.`);
+
+    $('fact-hour').textContent = spanText(Math.round(state.life * 12 / 24));
+    const seconds = 86400 * DAY / whole;
+    $('fact-day').textContent = seconds < 60
+      ? `${seconds.toFixed(1)}초`
+      : `${Math.floor(seconds / 60)}분 ${Math.round(seconds % 60)}초`;
+    const [markHour, markName] = hours < 12 ? [12, '정오'] : hours < 18 ? [18, '저녁 6시'] : [24, '자정'];
+    $('fact-mark-label').textContent = `${markName}까지 남은 시간`;
+    if (!result.left) { $('fact-mark').textContent = '지났어요'; return; }
+    const p = Calc.breakdown(now, new Date(birth.getTime() + whole * markHour / 24));
+    $('fact-mark').textContent = p.months ? spanText(p.months) : `${p.w * 7 + p.d}일`;
+  }
+
+  /* ---------- 주 단위 달력 ---------- */
+  function drawWeeks() {
+    const box = $('weeks-box');
+    const boxWidth = box.clientWidth;
+    if (!boxWidth || !result) return;
+    const dpr = Math.min(3, Math.max(1, Math.round(window.devicePixelRatio || 1)));
+    const key = [boxWidth, dpr, result.rows, result.totalCells, result.livedCells, result.left > 0].join('|');
+    if (key === gridKey) return;
+    gridKey = key;
+
+    const COLS = 52, GUTTER = 30;
+    const snap = (v) => Math.round(v * dpr) / dpr; // 기기 픽셀에 맞춰 칸이 번지지 않게 함
+    const n3 = (v) => +v.toFixed(3);
+    const pitch = Math.min(9, Math.floor((boxWidth - GUTTER) / COLS * dpr) / dpr);
+    const size = snap(pitch * 0.74), decadeGap = snap(pitch);
+    let past = '', next = '', nowMark = '', labels = '', bottom = 0;
+
+    for (let r = 0; r < result.rows; r++) {
+      const y = n3(snap(r * pitch + Math.floor(r / 10) * decadeGap));
+      const first = r * COLS, count = Math.min(COLS, result.totalCells - first);
+      for (let c = 0; c < count; c++) {
+        const x = n3(GUTTER + c * pitch), i = first + c;
+        if (result.left && i === result.livedCells) {
+          nowMark = `<rect class="wk-now" x="${x}" y="${y}" width="${size}" height="${size}"/>`
+            + `<circle class="wk-ring" cx="${n3(x + size / 2)}" cy="${n3(y + size / 2)}" r="${n3(pitch * 1.5)}"/>`;
+        } else {
+          const cell = `M${x} ${y}h${size}v${size}h-${size}z`;
+          if (i < result.livedCells) past += cell; else next += cell;
+        }
+      }
+      if (r % 10 === 0) {
+        labels += `<text x="${GUTTER - 9}" y="${n3(y + size / 2)}" text-anchor="end" dominant-baseline="central">${r}</text>`;
+      }
+      bottom = y + size;
+    }
+
+    const width = n3(GUTTER + COLS * pitch - (pitch - size)), height = n3(bottom);
+    const label = `한 줄이 1년인 ${result.rows}줄짜리 달력. 지나온 ${fmt(result.weeksLived)}주, 남은 ${fmt(Math.floor(result.left / WEEK))}주.`;
+    box.innerHTML = `<svg role="img" aria-label="${label}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`
+      + `<path class="wk-past" d="${past}"/><path class="wk-next" d="${next}"/>${nowMark}${labels}</svg>`;
+  }
+
+  /* ---------- 화면 전체 ---------- */
+  function paintMsg() {
+    const msg = $('msg');
+    const error = errors.birth || errors.life;
+    msg.className = error ? 'msg is-error' : 'msg';
+    if (error) msg.textContent = error;
+    else if (result && !result.left) msg.textContent = '기준 나이를 이미 지났어요. 기준 나이를 올리면 다시 세어 드려요.';
+    else if (state.eg) msg.innerHTML = '<span class="eg">예시</span>숫자를 눌러 내 생일로 바꿔 보세요.';
+    else msg.textContent = '';
+  }
+
+  function renderAll(tear) {
+    const now = new Date();
+    const birth = new Date(state.y, state.m - 1, state.d);
+    result = Calc.measure(birth, state.life, now);
+    dayShown = Calc.dayNum(now);
+
+    $('sheet').dataset.dow = String(now.getDay());
+    $('today').textContent = ymd(now);
+    $('dow').textContent = DOW[now.getDay()];
+
+    const text = paintClock(now, tear);
+    $('sr-summary').textContent = `남은 시간은 ${text}${UNITS[state.unit]}입니다.`;
+    $('passed').textContent = `${(result.passed * 100).toFixed(1)}%`;
+    $('end-label').textContent = `${lifeText(state.life)}세가 되는 날`;
+    $('end-date').textContent = ymd(result.end);
+    paintLifeClock(birth, now);
+
+    const notes = Calc.nextNotes(birth, now);
+    for (const k of TILES) {
+      $(`n-${k}`).textContent = fmt(result.counts[k]);
+      $(`c-${k}`).textContent = result.left ? notes[k] : '';
+    }
+
+    $('lg-past').textContent = `지나온 ${fmt(result.weeksLived)}주`;
+    $('lg-next').textContent = `남은 ${fmt(Math.floor(result.left / WEEK))}주`;
+    drawWeeks();
+
+    document.querySelectorAll('.presets button').forEach((b) => {
+      b.setAttribute('aria-pressed', String(Math.abs(+b.dataset.life - state.life) < 0.05));
+    });
+    paintMsg();
+  }
+
+  function tick() {
+    const now = new Date();
+    if (Calc.dayNum(now) !== dayShown) renderAll(true);
+    else paintClock(now, true);
+  }
+
+  /* ---------- 입력 ---------- */
+  function applyBirth(final) {
+    const r = Calc.parseBirth(el.by.value, el.bm.value, el.bd.value, new Date());
+    ['by', 'bm', 'bd'].forEach((id) => el[id].removeAttribute('aria-invalid'));
+    errors.birth = '';
+    if (r.date) {
+      const y = r.date.getFullYear(), m = r.date.getMonth() + 1, d = r.date.getDate();
+      if (y !== state.y || m !== state.m || d !== state.d) {
+        state = { ...state, y, m, d, eg: false };
+        save();
+        renderAll(true);
+        return;
+      }
+    } else if (r.error) {
+      errors.birth = r.error;
+      el[r.at].setAttribute('aria-invalid', 'true');
+    } else if (final) {
+      errors.birth = '태어난 해는 네 자리로, 월과 일도 빠짐없이 넣어 주세요.';
+    }
+    paintMsg();
+  }
+
+  function applyLife(final) {
+    const n = parseFloat(el.life.value);
+    el.life.removeAttribute('aria-invalid');
+    if (!Number.isFinite(n)) {
+      if (!final) return;
+      errors.life = '기준 나이를 숫자로 넣어 주세요.';
+    } else if (n < 1 || n > 130) {
+      errors.life = '기준 나이는 1세에서 130세 사이로 넣어 주세요.';
+    } else {
+      errors.life = '';
+      const life = Math.round(n * 10) / 10;
+      if (final) el.life.value = lifeText(life);
+      if (life !== state.life) {
+        state = { ...state, life };
+        save();
+        renderAll(true);
+        return;
+      }
+    }
+    if (errors.life) el.life.setAttribute('aria-invalid', 'true');
+    paintMsg();
+  }
+
+  function wire() {
+    const order = ['by', 'bm', 'bd'];
+    order.forEach((id, i) => {
+      const input = el[id];
+      input.addEventListener('focus', () => input.select());
+      input.addEventListener('input', () => {
+        const v = input.value.replace(/\D/g, '').slice(0, id === 'by' ? 4 : 2);
+        if (v !== input.value) input.value = v;
+        const done = id === 'by' ? v.length === 4 : v.length === 2 || (v.length === 1 && +v > (id === 'bm' ? 1 : 3));
+        applyBirth(false);
+        const nextId = order[i + 1];
+        if (done && nextId && document.activeElement === input) el[nextId].focus();
+      });
+      input.addEventListener('blur', () => applyBirth(true));
+    });
+
+    el.life.addEventListener('focus', () => el.life.select());
+    el.life.addEventListener('input', () => {
+      let v = el.life.value.replace(/[^\d.]/g, '');
+      const dot = v.indexOf('.');
+      if (dot !== -1) v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '').slice(0, 1);
+      if (v !== el.life.value) el.life.value = v;
+      clearTimeout(lifeTimer);
+      lifeTimer = setTimeout(() => applyLife(false), 500);
+    });
+    el.life.addEventListener('blur', () => { clearTimeout(lifeTimer); applyLife(true); });
+
+    document.querySelectorAll('.presets button').forEach((b) => {
+      b.addEventListener('click', () => {
+        const life = +b.dataset.life;
+        clearTimeout(lifeTimer);
+        el.life.value = lifeText(life);
+        el.life.removeAttribute('aria-invalid');
+        errors.life = '';
+        if (life !== state.life) { state = { ...state, life }; save(); }
+        renderAll(true);
+      });
+    });
+
+    document.querySelectorAll('input[name="unit"]').forEach((radio) => {
+      radio.addEventListener('change', () => {
+        if (!radio.checked) return;
+        state = { ...state, unit: radio.value };
+        save();
+        const text = paintClock(new Date(), true);
+        $('sr-summary').textContent = `남은 시간은 ${text}${UNITS[state.unit]}입니다.`;
+      });
+    });
+
+    $('premise').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    });
+
+    let frame = 0;
+    const relayout = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => { fitNumeral(); drawWeeks(); });
+    };
+    if ('ResizeObserver' in window) {
+      const watcher = new ResizeObserver(relayout);
+      watcher.observe($('weeks-box'));
+      watcher.observe($('numeral-wrap'));
+    } else {
+      window.addEventListener('resize', relayout);
+    }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitNumeral);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+  }
+
+  function start(snapshot) {
+    const saved = usable(snapshot) ? snapshot : load();
+    if (saved) {
+      state = { y: +saved.y, m: +saved.m, d: +saved.d, life: saved.life, unit: saved.unit, eg: saved.eg === true };
+    }
+    el.by.value = state.y;
+    el.bm.value = state.m;
+    el.bd.value = state.d;
+    el.life.value = lifeText(state.life);
+    $(`unit-${state.unit}`).checked = true;
+    $('dial-ticks').innerHTML = Array.from({ length: 12 }, (_, k) => (k % 3
+      ? `<line x1="100" y1="9" x2="100" y2="15" transform="rotate(${k * 30} 100 100)"/>`
+      : `<line class="q" x1="100" y1="8" x2="100" y2="17" transform="rotate(${k * 30} 100 100)"/>`)).join('');
+    wire();
+    renderAll(false);
+    // 처음에는 바늘을 제자리에 바로 두고, 그다음 변화부터 움직임을 보여 줌
+    requestAnimationFrame(() => requestAnimationFrame(() => $('dial').classList.add('is-live')));
+    const loop = () => { tick(); setTimeout(loop, 1000 - (Date.now() % 1000) + 8); };
+    setTimeout(loop, 1000 - (Date.now() % 1000) + 8);
+  }
+
+  /* 새 버전이 올라와도 넣어 둔 값이 유지되도록 상태를 넘겨 줌 */
+  window.claude?.hot?.snapshot?.(() => ({ ...state }));
+  if (window.claude?.hot?.ready) window.claude.hot.ready(start);
+  else start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
