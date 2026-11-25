@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Abril+Fatface&amp;family=Gowun+Batang:wght@400;700&amp;display=swap">
 <style>
 :root {
-  /* 벽에 걸린 일력 한 장이 주인공. 일력 안은 가운데 정렬, 그 밖은 왼쪽 정렬한 달력 칸. */
+  /* 벽에 걸린 일력 한 장이 주인공. 어느 화면에서든 한 줄로 내려가고, 일력 안은 가운데 정렬, 그 밖은 왼쪽 정렬한 달력 칸. */
   --paper: #ffffff;
   --ink: #17191c;
   --muted: #59616b;
@@ -92,17 +92,9 @@ button { cursor: pointer; }
 .masthead .lede { margin-top: 6px; max-width: 31em; color: var(--muted); font-size: 16px; }
 h2 { margin-bottom: 14px; font-size: 21px; line-height: 1.35; font-weight: 700; text-wrap: balance; }
 
+/* 넓은 화면에서도 모바일처럼 한 줄로 내려감 */
 @media (min-width: 1000px) {
-  .page {
-    max-width: 1080px;
-    grid-template-columns: 440px minmax(0, 1fr);
-    column-gap: 72px;
-    align-items: start;
-    padding-top: 44px;
-  }
-}
-@media (min-width: 1000px) and (min-height: 820px) {
-  .lead { position: sticky; top: 32px; }
+  .page { padding-top: 44px; }
 }
 
 /* ---------- 일력 ---------- */
@@ -325,9 +317,6 @@ h2 { margin-bottom: 14px; font-size: 21px; line-height: 1.35; font-weight: 700; 
   font-size: 13.5px; line-height: 1.6; color: var(--muted);
 }
 .rights strong { color: var(--ink); }
-@media (min-width: 1000px) {
-  .rights { grid-column: 1 / -1; }
-}
 </style>
 </head>
 <body>
