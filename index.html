@@ -112,13 +112,7 @@ h2 { margin-bottom: 14px; font-size: 21px; line-height: 1.35; font-weight: 700; 
   border: 2px solid var(--ink);
   border-top: 0;
 }
-.bind { position: relative; height: 26px; background: var(--ink); }
-/* 일력만 캡처돼도 만든 사람이 같이 남도록 띠에 인쇄 */
-.bind-mark {
-  position: absolute; left: 14px; top: 0;
-  color: var(--paper);
-  font-size: 13px; font-weight: 700; line-height: 26px; letter-spacing: 0.04em;
-}
+.bind { position: relative; height: 18px; background: var(--ink); }
 .bind::after {
   content: "";
   position: absolute; left: 50%; top: 50%;
@@ -323,6 +317,17 @@ h2 { margin-bottom: 14px; font-size: 21px; line-height: 1.35; font-weight: 700; 
 .wk-ring { fill: none; stroke: var(--sun); stroke-width: 1.5; shape-rendering: geometricPrecision; }
 .weeks-box text { font-family: var(--font-text); font-size: 11.5px; fill: var(--muted); }
 .fine { margin-top: 10px; font-size: 14px; color: var(--muted); }
+
+/* ---------- 저작권 ---------- */
+.rights {
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px; line-height: 1.6; color: var(--muted);
+}
+.rights strong { color: var(--ink); }
+@media (min-width: 1000px) {
+  .rights { grid-column: 1 / -1; }
+}
 </style>
 </head>
 <body>
@@ -337,7 +342,7 @@ h2 { margin-bottom: 14px; font-size: 21px; line-height: 1.35; font-weight: 700; 
     </header>
 
     <section class="sheet" id="sheet" aria-label="남은 시간 일력">
-      <div class="bind" aria-hidden="true"><span class="bind-mark">뿅글이</span></div>
+      <div class="bind" aria-hidden="true"></div>
       <p class="sheet-head"><span id="today">&nbsp;</span><span class="dow" id="dow"></span></p>
 
       <form class="premise" id="premise" novalidate>
@@ -436,6 +441,11 @@ h2 { margin-bottom: 14px; font-size: 21px; line-height: 1.35; font-weight: 700; 
       <p class="fine">한 줄이 1년, 한 칸이 1주쯤이에요. 왼쪽 숫자는 나이예요.</p>
     </section>
   </div>
+
+  <footer class="rights">
+    <p><strong>© 2026 뿅글이. All rights reserved.</strong></p>
+    <p>이 페이지의 저작권은 뿅글이에게 있습니다. 무단으로 복제하거나 배포하면 법적 조치를 받을 수 있습니다.</p>
+  </footer>
 </main>
 
 <script id="calc">
