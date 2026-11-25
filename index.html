@@ -112,7 +112,13 @@ h2 { margin-bottom: 14px; font-size: 21px; line-height: 1.35; font-weight: 700; 
   border: 2px solid var(--ink);
   border-top: 0;
 }
-.bind { position: relative; height: 18px; background: var(--ink); }
+.bind { position: relative; height: 26px; background: var(--ink); }
+/* 일력만 캡처돼도 만든 사람이 같이 남도록 띠에 인쇄 */
+.bind-mark {
+  position: absolute; left: 14px; top: 0;
+  color: var(--paper);
+  font-size: 13px; font-weight: 700; line-height: 26px; letter-spacing: 0.04em;
+}
 .bind::after {
   content: "";
   position: absolute; left: 50%; top: 50%;
@@ -331,7 +337,7 @@ h2 { margin-bottom: 14px; font-size: 21px; line-height: 1.35; font-weight: 700; 
     </header>
 
     <section class="sheet" id="sheet" aria-label="남은 시간 일력">
-      <div class="bind" aria-hidden="true"></div>
+      <div class="bind" aria-hidden="true"><span class="bind-mark">뿅글이</span></div>
       <p class="sheet-head"><span id="today">&nbsp;</span><span class="dow" id="dow"></span></p>
 
       <form class="premise" id="premise" novalidate>
